@@ -1,3 +1,11 @@
+provider "aws" {
+  ignore_tags {
+    key_prefixes = [
+      "kubernetes.io/cluster/"
+    ]
+  }
+}
+
 module "aws-infrastructure" {
   source = "github.com/garyellis/terraform-aws-k8s-infrastructure"
 
@@ -36,11 +44,14 @@ module "aws-infrastructure" {
 module "k8s_cluster" {
   source = "../"
 
-  cluster_name                = var.name
-  etcd_node_addresses         = module.aws-infrastructure.etcd_node_ips
-  controlplane_node_addresses = module.aws-infrastructure.controlplane_node_ips
-  worker_node_addresses       = module.aws-infrastructure.worker_node_ips
-  apiserver_sans              = list(module.aws-infrastructure.apiserver_fqdn)
-  ssh_user                    = var.ssh_user
-  ssh_key_path                = var.ssh_key_path
+  cluster_name                         = var.name
+  etcd_node_addresses                  = module.aws-infrastructure.etcd_node_private_dns
+  etcd_node_internal_addresses         = module.aws-infrastructure.etcd_node_ips
+  controlplane_node_addresses          = module.aws-infrastructure.controlplane_node_private_dns
+  controlplane_node_internal_addresses = module.aws-infrastructure.controlplane_node_ips
+  worker_node_addresses                = module.aws-infrastructure.worker_node_private_dns
+  worker_node_internal_addresses       = module.aws-infrastructure.worker_node_ips
+  apiserver_sans                       = list(module.aws-infrastructure.apiserver_fqdn)
+  ssh_user                             = var.ssh_user
+  ssh_key_path                         = var.ssh_key_path
 }

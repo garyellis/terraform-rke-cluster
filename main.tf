@@ -1,86 +1,84 @@
 locals {
-
-  private_registries = [
-    {
-      url        = var.default_registry
-      is_default = true
-    }
-  ]
-
-  system_images = {
-    etcd                        = ""
-    alpine                      = ""
-    nginx_proxy                 = ""
-    cert_downloader             = ""
-    kubernetes                  = ""
-    kubernetes_services_sidecar = ""
-    pod_infra_container         = ""
-
-    kubedns            = ""
-    dnsmasq            = ""
-    kubedns_sidecar    = ""
-    kubedns_autoscaler = ""
-
-    coredns            = ""
-    coredns_autoscaler = ""
-
-    flannel     = ""
-    flannel_cni = ""
-
-    calico_node        = ""
-    calico_cni         = ""
-    calico_controllers = ""
-    calico_ctl         = ""
-
-    canal_node    = ""
-    canal_cni     = ""
-    canal_flannel = ""
-
-    weave_node = ""
-    weave_cni  = ""
-
-    ingress         = ""
-    ingress_backend = ""
-
-    metrics_server = ""
-  }
-
-
+  etcd_node_internal_addresses = length(var.etcd_node_internal_addresses) == 0 ? var.etcd_node_addresses : var.etcd_node_internal_addresses
   etcd_nodes = [
-    for i, private_ip in compact(concat(var.etcd_node_addresses)) : {
-      address          = private_ip
-      internal_address = private_ip
+    for i, address in compact(concat(var.etcd_node_addresses)) : {
+      address          = address
+      internal_address = local.etcd_node_internal_addresses[i]
       user             = var.ssh_user
-      role             = "etcd"
+      role             = ["etcd"]
+      labels           = var.labels
       ssh_key_path     = var.ssh_key_path
+      ssh_cert_path    = var.ssh_cert_path
     }
   ]
 
+  controlplane_node_internal_addresses = length(var.controlplane_node_internal_addresses) == 0 ? var.controlplane_node_addresses : var.controlplane_node_internal_addresses
   controlplane_nodes = [
-    for i, private_ip in compact(concat(var.controlplane_node_addresses)) : {
-      address          = private_ip
-      internal_address = private_ip
+    for i, address in compact(concat(var.controlplane_node_addresses)) : {
+      address          = address
+      internal_address = local.controlplane_node_internal_addresses[i]
       user             = var.ssh_user
-      role             = "controlplane"
+      role             = ["controlplane"]
+      labels           = var.labels
       ssh_key_path     = var.ssh_key_path
+      ssh_cert_path    = var.ssh_cert_path
     }
   ]
 
+  worker_node_internal_addresses = length(var.worker_node_internal_addresses) == 0 ? var.worker_node_addresses : var.worker_node_internal_addresses
   worker_nodes = [
-    for i, private_ip in compact(concat(var.worker_node_addresses)) : {
-      address          = private_ip
-      internal_address = private_ip
+    for i, address in compact(concat(var.worker_node_addresses)) : {
+      address          = address
+      internal_address = var.worker_node_internal_addresses[i]
       user             = var.ssh_user
-      role             = "worker"
+      role             = ["worker"]
+      labels           = var.labels
       ssh_key_path     = var.ssh_key_path
+      ssh_cert_path    = var.ssh_cert_path
     }
   ]
 
-  all_nodes = concat(local.etcd_nodes, local.controlplane_nodes, local.worker_nodes)
+  etcd_controlplane_node_internal_addresses = length(var.etcd_controlplane_node_internal_addresses) == 0 ? var.etcd_controlplane_node_addresses : var.etcd_controlplane_node_internal_addresses
+  etcd_controlplane_nodes = [
+    for i, address in compact(concat(var.etcd_controlplane_node_addresses)) : {
+      address          = address
+      internal_address = local.etcd_controlplane_node_internal_addresses[i]
+      user             = var.ssh_user
+      role             = ["etcd", "controlplane"]
+      labels           = var.labels
+      ssh_key_path     = var.ssh_key_path
+      ssh_cert_path    = var.ssh_cert_path
+    }
+  ]
+
+  etcd_controlplane_worker_node_internal_addresses = length(var.etcd_controlplane_worker_node_internal_addresses) == 0 ? var.etcd_controlplane_worker_node_addresses : var.etcd_controlplane_worker_node_internal_addresses
+  etcd_controlplane_worker_nodes = [
+    for i, address in compact(concat(var.etcd_controlplane_worker_node_addresses)) : {
+      address          = address
+      internal_address = local.etcd_controlplane_worker_node_internal_addresses[i]
+      user             = var.ssh_user
+      role             = ["etcd", "controlplane", "worker"]
+      labels           = var.labels
+      ssh_key_path     = var.ssh_key_path
+      ssh_cert_path    = var.ssh_cert_path
+    }
+  ]
+
+  all_nodes = concat(local.etcd_nodes, local.controlplane_nodes, local.etcd_controlplane_nodes, local.etcd_controlplane_worker_nodes, local.worker_nodes)
 }
 
 resource "rke_cluster" "cluster" {
   cluster_name = var.cluster_name
+
+  dynamic "private_registries" {
+    for_each = var.private_registries
+    content {
+      url        = lookup(private_registries.value, "url")
+      is_default = lookup(private_registries.value, "is_default", null)
+      password   = lookup(private_registries.value, "password", null)
+      user       = lookup(private_registries.value, "user", null)
+    }
+  }
 
   authentication {
     strategy = "x509"
@@ -88,7 +86,11 @@ resource "rke_cluster" "cluster" {
   }
   services {
     etcd {}
-    kube_api {}
+    kube_api {
+      audit_log {
+        enabled = "true"
+      }
+    }
     kube_controller {}
     scheduler {}
     kubelet {}
@@ -99,11 +101,18 @@ resource "rke_cluster" "cluster" {
   }
 
   network {
-    plugin = "canal"
+    plugin = var.network_plugin
   }
 
   ingress {
     provider = "nginx"
+  }
+
+  dynamic "cloud_provider" {
+    for_each = length(var.cloud_provider) > 0 ? [1] : []
+    content {
+      name = lookup(var.cloud_provider, "name")
+    }
   }
 
   dynamic "nodes" {
@@ -112,8 +121,10 @@ resource "rke_cluster" "cluster" {
       address          = lookup(nodes.value, "address")
       internal_address = lookup(nodes.value, "internal_address")
       user             = lookup(nodes.value, "user")
-      role             = split(",", lookup(nodes.value, "role"))
+      role             = lookup(nodes.value, "role")
+      labels           = lookup(nodes.value, "labels")
       ssh_key_path     = lookup(nodes.value, "ssh_key_path", null)
+      ssh_cert_path    = lookup(nodes.value, "ssh_cert_path", null)
     }
   }
 }
