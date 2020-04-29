@@ -39,6 +39,7 @@ Create a Kubernetes on existing nodes. This terraform module provides the follow
 | labels | Labels applied to all nodes | `map(string)` | `{}` | no |
 | network\_plugin | The kubernetes cluster cni | `string` | `"canal"` | no |
 | private\_registries | a list of private registries | `list(map(string))` | `[]` | no |
+| ssh\_agent\_auth | Enable SSH agent auth | `bool` | `false` | no |
 | ssh\_cert\_path | the ssh cert path | `string` | `null` | no |
 | ssh\_key\_path | The ssh key path | `string` | `null` | no |
 | ssh\_user | The ssh user | `string` | n/a | yes |

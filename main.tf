@@ -9,6 +9,7 @@ locals {
       labels           = var.labels
       ssh_key_path     = var.ssh_key_path
       ssh_cert_path    = var.ssh_cert_path
+      ssh_agent_auth   = var.ssh_agent_auth
     }
   ]
 
@@ -22,6 +23,7 @@ locals {
       labels           = var.labels
       ssh_key_path     = var.ssh_key_path
       ssh_cert_path    = var.ssh_cert_path
+      ssh_agent_auth   = var.ssh_agent_auth
     }
   ]
 
@@ -35,6 +37,7 @@ locals {
       labels           = var.labels
       ssh_key_path     = var.ssh_key_path
       ssh_cert_path    = var.ssh_cert_path
+      ssh_agent_auth   = var.ssh_agent_auth
     }
   ]
 
@@ -48,6 +51,7 @@ locals {
       labels           = var.labels
       ssh_key_path     = var.ssh_key_path
       ssh_cert_path    = var.ssh_cert_path
+      ssh_agent_auth   = var.ssh_agent_auth
     }
   ]
 
@@ -61,6 +65,7 @@ locals {
       labels           = var.labels
       ssh_key_path     = var.ssh_key_path
       ssh_cert_path    = var.ssh_cert_path
+      ssh_agent_auth   = var.ssh_agent_auth
     }
   ]
 
@@ -125,6 +130,7 @@ resource "rke_cluster" "cluster" {
       labels           = lookup(nodes.value, "labels")
       ssh_key_path     = lookup(nodes.value, "ssh_key_path", null)
       ssh_cert_path    = lookup(nodes.value, "ssh_cert_path", null)
+      ssh_agent_path   = lookup(nodes.value, "ssh_agent_path", false)
     }
   }
 }

@@ -46,6 +46,12 @@ variable "ssh_cert_path" {
   default     = null
 }
 
+variable "ssh_agent_auth" {
+  description = "Enable SSH agent auth"
+  type        = bool
+  default     = false
+}
+
 variable "labels" {
   description = "Labels applied to all nodes"
   type        = map(string)
