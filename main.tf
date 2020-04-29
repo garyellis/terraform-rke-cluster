@@ -130,7 +130,7 @@ resource "rke_cluster" "cluster" {
       labels           = lookup(nodes.value, "labels")
       ssh_key_path     = lookup(nodes.value, "ssh_key_path", null)
       ssh_cert_path    = lookup(nodes.value, "ssh_cert_path", null)
-      ssh_agent_path   = lookup(nodes.value, "ssh_agent_path", false)
+      ssh_agent_auth   = lookup(nodes.value, "ssh_agent_auth", false)
     }
   }
 }
