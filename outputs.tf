@@ -17,4 +17,5 @@ output "ca_crt" {
 
 output "kube_cluster_yaml" {
   value = "./kube_config_cluster.yml"
+  sensitive = true
 }
