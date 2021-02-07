@@ -5,4 +5,5 @@ terraform {
       source  = "rancher/rke"
       version = ">= 1.1.3"
     }
+  }
 }
